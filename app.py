@@ -12,6 +12,8 @@ if "sesion_iniciada" in st.session_state and st.session_state["sesion_iniciada"]
 
     if seleccion == "Ventas":
         mostrar_venta()
+    if seleccion == "Ventas":
+        mostrar_compras()
     elif seleccion == "Otra opción":
         st.write("Has seleccionado otra opción.")
 else:
