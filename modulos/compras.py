@@ -1,106 +1,49 @@
 import streamlit as st
-import pandas as pd
-from datetime import date
+import mysql.connector
 
-def _init_state():
-    if "compras" not in st.session_state:
-        st.session_state["compras"] = pd.DataFrame(
-            columns=["Fecha", "Proveedor", "Producto", "Cantidad", "Precio Unitario", "Total", "Método de pago", "Notas"]
-        )
+# Conexión con tu base de datos de Clever Cloud
+def get_connection():
+    return mysql.connector.connect(
+        host="bxu2mxxxxx-mysql.services.clever-cloud.com",  # tu host de Clever Cloud
+        user="tu_usuario",       # tu usuario
+        password="tu_contraseña",# tu contraseña
+        database="buap2lwlapikiigfik04",
+        port=3306
+    )
 
 def mostrar_compras():
-    st.title("📥 Compras")
+    st.title("🛒 Registro de Compras")
 
-    _init_state()
+    producto = st.text_input("Producto")
+    cantidad = st.text_input("Cantidad")
 
-    with st.expander("➕ Registrar nueva compra", expanded=True):
-        with st.form("form_compras", clear_on_submit=False):
-            col1, col2, col3 = st.columns(3)
-            with col1:
-                fecha = st.date_input("Fecha", value=date.today())
-                proveedor = st.text_input("Proveedor")
-            with col2:
-                producto = st.text_input("Producto / Insumo")
-                cantidad = st.number_input("Cantidad", min_value=0.0, step=1.0, format="%.2f")
-            with col3:
-                precio_unit = st.number_input("Precio unitario", min_value=0.0, step=0.01, format="%.2f")
-                metodo = st.selectbox("Método de pago", ["Efectivo", "Tarjeta", "Transferencia", "Crédito a proveedor"])
-            notas = st.text_area("Notas (opcional)", placeholder="Lote, condiciones, referencia de factura, etc.")
+    if st.button("Guardar compra"):
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("""
+                INSERT INTO Compras (Producto, Cantidad)
+                VALUES (%s, %s)
+            """, (producto, cantidad))
+            conn.commit()
+            cur.close()
+            conn.close()
+            st.success("✅ Compra registrada correctamente.")
+        except Exception as e:
+            st.error(f"Error al guardar la compra: {e}")
 
-            submitted = st.form_submit_button("Guardar compra")
-            if submitted:
-                # Validaciones simples
-                if not proveedor:
-                    st.warning("Ingresa el nombre del proveedor.")
-                elif not producto:
-                    st.warning("Ingresa el nombre del producto/insumo.")
-                elif cantidad <= 0:
-                    st.warning("La cantidad debe ser mayor que 0.")
-                elif precio_unit <= 0:
-                    st.warning("El precio unitario debe ser mayor que 0.")
-                else:
-                    total = round(cantidad * precio_unit, 2)
-                    nueva = {
-                        "Fecha": pd.to_datetime(fecha),
-                        "Proveedor": proveedor.strip(),
-                        "Producto": producto.strip(),
-                        "Cantidad": float(cantidad),
-                        "Precio Unitario": float(precio_unit),
-                        "Total": total,
-                        "Método de pago": metodo,
-                        "Notas": notas.strip(),
-                    }
-                    st.session_state["compras"] = pd.concat(
-                        [st.session_state["compras"], pd.DataFrame([nueva])],
-                        ignore_index=True
-                    )
-                    st.success(f"Compra registrada: {producto} por {total:,.2f}")
+    if st.button("Mostrar compras"):
+        try:
+            conn = get_connection()
+            cur = conn.cursor()
+            cur.execute("SELECT * FROM Compras ORDER BY Id_Compra DESC")
+            datos = cur.fetchall()
+            conn.close()
 
-    # Tabla de compras
-    st.subheader("📋 Historial de compras")
-    if st.session_state["compras"].empty:
-        st.info("Aún no hay compras registradas.")
-    else:
-        # Ordenar por fecha descendente
-        df = st.session_state["compras"].sort_values("Fecha", ascending=False).reset_index(drop=True)
-        st.dataframe(
-            df.style.format({
-                "Cantidad": "{:,.2f}",
-                "Precio Unitario": "{:,.2f}",
-                "Total": "{:,.2f}"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
-
-        # Resumen
-        st.subheader("🧾 Resumen")
-        colA, colB, colC = st.columns(3)
-        with colA:
-            st.metric("Total gastado", f"{df['Total'].sum():,.2f}")
-        with colB:
-            st.metric("Ítems comprados", f"{int((df['Cantidad']).sum()):,}")
-        with colC:
-            st.metric("Órdenes de compra", f"{len(df):,}")
-
-        # Filtros rápidos
-        with st.expander("🔎 Filtros rápidos"):
-            proveedores = ["(Todos)"] + sorted(df["Proveedor"].dropna().unique().tolist())
-            prov_sel = st.selectbox("Proveedor", proveedores)
-            metodo_sel = st.multiselect("Método de pago", df["Método de pago"].dropna().unique().tolist())
-
-            dff = df.copy()
-            if prov_sel != "(Todos)":
-                dff = dff[dff["Proveedor"] == prov_sel]
-            if metodo_sel:
-                dff = dff[dff["Método de pago"].isin(metodo_sel)]
-
-            st.dataframe(
-                dff.style.format({
-                    "Cantidad": "{:,.2f}",
-                    "Precio Unitario": "{:,.2f}",
-                    "Total": "{:,.2f}"
-                }),
-                use_container_width=True,
-                hide_index=True
-            )
+            if datos:
+                st.subheader("📋 Compras registradas")
+                st.table(datos)
+            else:
+                st.info("No hay compras registradas.")
+        except Exception as e:
+            st.error(f"Error al cargar las compras: {e}")
