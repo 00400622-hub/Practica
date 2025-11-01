@@ -7,7 +7,7 @@ from modulos.compras import mostrar_compras
 # Comprobamos si la sesión ya está iniciada
 if "sesion_iniciada" in st.session_state and st.session_state["sesion_iniciada"]:
     # Si la sesión está iniciada, mostrar el contenido de ventas o menú principal
-    opciones = ["Ventas","Conmpras" "Otra opción"]  # Agrega más opciones si las necesitas
+    opciones = ["Ventas","Compras","Otra opción"]  # Agrega más opciones si las necesitas
     seleccion = st.sidebar.selectbox("Selecciona una opción", opciones)
 
     if seleccion == "Ventas":
