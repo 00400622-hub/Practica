@@ -5,7 +5,7 @@ from modulos.compras import mostrar_compras
 from modulos.clientes import mostrar_clientes
 
 if "sesion_iniciada" in st.session_state and st.session_state["sesion_iniciada"]:
-    seleccion = st.sidebar.selectbox("Selecciona una opción", ["Ventas", "Compras","Clientes","Otra opción"])
+    seleccion = st.sidebar.selectbox("Selecciona una opción", ["Ventas", "Compras","Clientes"])
 
     if seleccion == "Ventas":
         mostrar_venta()          # <-- SOLO Ventas aquí
