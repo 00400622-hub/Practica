@@ -1,49 +1,41 @@
 import streamlit as st
-import mysql.connector
-
-# Conexión con tu base de datos de Clever Cloud
-def get_connection():
-    return mysql.connector.connect(
-        host="buap2lwlapikiigfik04-mysql.services.clever-cloud.com",  # tu host de Clever Cloud
-        user="ux2mxably9txzwyp",       # tu usuario
-        password="p2Cko9FhMUCkliGrBXF2",# tu contraseña
-        database="buap2lwlapikiigfik04",
-        port=3306
-    )
+from modulos.config.conexion import obtener_conexion
 
 def mostrar_compras():
-    st.title("🛒 Registro de Compras")
+    st.header("🛍️ Registro de Compras")
 
-    producto = st.text_input("Producto")
-    cantidad = st.text_input("Cantidad")
+    try:
+        con = obtener_conexion()
+        cursor = con.cursor()
 
-    if st.button("Guardar compra"):
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("""
-                INSERT INTO Compras (Producto, Cantidad)
-                VALUES (%s, %s)
-            """, (producto, cantidad))
-            conn.commit()
-            cur.close()
-            conn.close()
-            st.success("✅ Compra registrada correctamente.")
-        except Exception as e:
-            st.error(f"Error al guardar la compra: {e}")
+        # Formulario para registrar la compra
+        with st.form("form_compras"):
+            producto = st.text_input("Producto")
+            cantidad = st.number_input("Cantidad", min_value=1, step=1)
+            enviar = st.form_submit_button("✅ Guardar compra")
 
-    if st.button("Mostrar compras"):
-        try:
-            conn = get_connection()
-            cur = conn.cursor()
-            cur.execute("SELECT * FROM Compras ORDER BY Id_Compra DESC")
-            datos = cur.fetchall()
-            conn.close()
+            if enviar:
+                if producto.strip() == "":
+                    st.warning("⚠️ Debes ingresar el nombre del producto.")
+                else:
+                    try:
+                        # Nota: Cantidad es VARCHAR(100) en la tabla, por eso se convierte a str
+                        cursor.execute(
+                            "INSERT INTO Compras (Producto, Cantidad) VALUES (%s, %s)",
+                            (producto, str(cantidad))
+                        )
+                        con.commit()
+                        st.success(f"✅ Compra registrada: {producto} (Cantidad: {cantidad})")
+                        st.rerun()
+                    except Exception as e:
+                        con.rollback()
+                        st.error(f"❌ Error al registrar la compra: {e}")
 
-            if datos:
-                st.subheader("📋 Compras registradas")
-                st.table(datos)
-            else:
-                st.info("No hay compras registradas.")
-        except Exception as e:
-            st.error(f"Error al cargar las compras: {e}")
+    except Exception as e:
+        st.error(f"❌ Error general: {e}")
+
+    finally:
+        if 'cursor' in locals():
+            cursor.close()
+        if 'con' in locals():
+            con.close()
